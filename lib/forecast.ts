@@ -87,6 +87,20 @@ export function projectPrices(
 }
 
 /**
+ * "예측상 수익률이 가장 높은 시점": 기준 예측에서 (예측 시세 − 낙찰가) ÷ 낙찰가가 가장 큰 해.
+ * 수익률이 같은 해가 여러 개면 이른 해를 고른다. 예측이 비어 있으면 null이다.
+ * 화면에는 "최적의 매도 시점"이 아니라 이 이름 그대로 쓴다. (PRD §5 금지어)
+ */
+export function getBestYear(points: readonly ForecastPoint[], winningBid: number): number | null {
+  let best: { year: number; rate: number } | null = null;
+  for (const point of points) {
+    const rate = (point.base - winningBid) / winningBid;
+    if (best === null || rate > best.rate) best = { year: point.year, rate };
+  }
+  return best?.year ?? null;
+}
+
+/**
  * 결과 화면용 예측. 기준일 직전 10개 연도(기준일이 2026년이면 2016~2025년) 시세를 근거로,
  * 현재 시세에서 출발해 기준일 다음 해부터 10년을 예측한다.
  * 근거 연도 시세가 하나라도 빠지면 null이다. (PRD §5 must ②)
