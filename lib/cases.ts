@@ -1,6 +1,6 @@
 // Design Ref: §5.1 목록에 보일 사례 — 사례 파일을 읽어, 목록·결과 화면·AI 해설이 함께 쓸 "보여 줄 사례"를 고른다.
 import casesFile from "../data/cases.json" with { type: "json" };
-import { getCurrentPrice, getProfitRate } from "./profit.ts";
+import { getBidRatio, getCurrentPrice, getProfitAmount, getProfitRate } from "./profit.ts";
 import type { Case, CasesFile, DateString, Sido } from "./types.ts";
 
 /** 예시 사례 파일 전체 (데이터 기준일, 예시 데이터 여부, 사례 목록) */
@@ -11,8 +11,12 @@ export type ListedCase = {
   item: Case;
   /** 현재 시세 (원) */
   currentPrice: number;
+  /** 시세 차익 (원). 손실이면 음수 */
+  profitAmount: number;
   /** 수익률 (%). 반올림하지 않은 값 */
   profitRate: number;
+  /** 감정가 대비 낙찰가율 (%). 반올림하지 않은 값 */
+  bidRatio: number;
   /** 낙찰일부터 기준일까지의 보유 기간 (반올림한 햇수) */
   holdingYears: number;
 };
@@ -63,7 +67,9 @@ export function getListedCases(cases: readonly Case[], asOfDate: DateString): Li
     listed.push({
       item,
       currentPrice,
+      profitAmount: getProfitAmount(currentPrice, item.winningBid),
       profitRate: getProfitRate(currentPrice, item.winningBid),
+      bidRatio: getBidRatio(item.winningBid, item.appraisalPrice),
       holdingYears: getHoldingYears(item.auctionDate, asOfDate),
     });
   }

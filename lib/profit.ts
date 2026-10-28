@@ -44,10 +44,23 @@ export function getCurrentPrice(item: Case, asOfDate: DateString): number | null
   return Math.round(sum / prices.length); // 시세는 양수라 Math.round가 "0.5는 올림"과 같다.
 }
 
+/** 시세 차익(원) = 현재 시세 − 낙찰가. 손실이면 음수다. */
+export function getProfitAmount(currentPrice: number, winningBid: number): number {
+  return currentPrice - winningBid;
+}
+
 /**
  * 수익률(%) = (현재 시세 − 낙찰가) ÷ 낙찰가 × 100.
  * 반올림하지 않은 값을 돌려준다. 반올림은 화면에 보여 줄 때 `formatProfitRate`가 한다.
  */
 export function getProfitRate(currentPrice: number, winningBid: number): number {
-  return ((currentPrice - winningBid) / winningBid) * 100;
+  return (getProfitAmount(currentPrice, winningBid) / winningBid) * 100;
+}
+
+/**
+ * 감정가 대비 낙찰가율(%) = 낙찰가 ÷ 감정가 × 100.
+ * "감정가보다 얼마나 싸게 샀는지"를 보여 준다. 반올림은 화면에 보여 줄 때 `formatBidRatio`가 한다.
+ */
+export function getBidRatio(winningBid: number, appraisalPrice: number): number {
+  return (winningBid / appraisalPrice) * 100;
 }
