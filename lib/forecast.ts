@@ -100,6 +100,48 @@ export function getBestYear(points: readonly ForecastPoint[], winningBid: number
   return best?.year ?? null;
 }
 
+/** 예측 검증 통과 기준: 마지막 해 오차 평균 ±15% 이내 (실제 데이터로 바꾼 뒤 판정) */
+export const BACKTEST_TOLERANCE = 0.15;
+
+/** 예측 검증에서 한 해의 결과 */
+export type BacktestYear = {
+  year: number;
+  predicted: number;
+  actual: number;
+  /** |예측 − 실제| ÷ 실제 (0.12 = 12%) */
+  error: number;
+};
+
+/** 예측 검증 연도. 기준일이 2026년이면 근거 2006~2015년, 맞힐 해 2016~2025년이다. */
+export function getBacktestYears(asOfDate: DateString): { basisFrom: number; basisTo: number; targetTo: number } {
+  const asOfYear = Number(asOfDate.slice(0, 4));
+  return {
+    basisFrom: asOfYear - BASIS_YEARS * 2,
+    basisTo: asOfYear - BASIS_YEARS - 1,
+    targetTo: asOfYear - 1,
+  };
+}
+
+/**
+ * 예측 검증 (DESIGN §8): 과거 10개 연도 시세로 상승률을 구하고, 근거 마지막 해 시세에서 출발해
+ * 기준 예측선으로 그다음 10년을 예측한 뒤, 실제 시세와 해마다 비교한다.
+ * 20개 연도 시세가 하나라도 빠진 사례는 검증하지 않는다(null).
+ */
+export function backtestCase(yearlyPrices: YearlyPrices, asOfDate: DateString): BacktestYear[] | null {
+  const { basisFrom, basisTo, targetTo } = getBacktestYears(asOfDate);
+  for (let year = basisFrom; year <= targetTo; year++) {
+    if (yearlyPrices[String(year)] === undefined) return null;
+  }
+  const rates = getForecastRates(yearlyPrices, basisFrom, basisTo);
+  if (rates === null) return null;
+
+  const startPrice = yearlyPrices[String(basisTo)] as number;
+  return projectPrices(rates, startPrice, basisTo, targetTo - basisTo).map(({ year, base }) => {
+    const actual = yearlyPrices[String(year)] as number;
+    return { year, predicted: base, actual, error: Math.abs(base - actual) / actual };
+  });
+}
+
 /**
  * 결과 화면용 예측. 기준일 직전 10개 연도(기준일이 2026년이면 2016~2025년) 시세를 근거로,
  * 현재 시세에서 출발해 기준일 다음 해부터 10년을 예측한다.

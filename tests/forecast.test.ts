@@ -1,7 +1,14 @@
 // Design Ref: §5.3 예측 — 상승률과 예측 시세를 손 계산 정답과 비교한다.
 import assert from "node:assert/strict";
 import { test } from "node:test";
-import { getBestYear, getCaseForecast, getForecastRates, projectPrices } from "../lib/forecast.ts";
+import {
+  backtestCase,
+  getBacktestYears,
+  getBestYear,
+  getCaseForecast,
+  getForecastRates,
+  projectPrices,
+} from "../lib/forecast.ts";
 import type { ForecastPoint } from "../lib/forecast.ts";
 import type { YearlyPrices } from "../lib/types.ts";
 
@@ -54,4 +61,36 @@ test("가장 높은 시점: 꼭대기 해, 동점이면 이른 해, 손실이면
   assert.equal(getBestYear([point(2027, 100), point(2028, 100)], 90), 2027);
   assert.equal(getBestYear([point(2027, 70), point(2028, 80)], 100), 2028);
   assert.equal(getBestYear([], 100), null);
+});
+
+/** 2006~2025년 시세를 만든다. price(연도)로 각 해의 값을 정한다. */
+const yearsFrom2006 = (price: (year: number) => number): YearlyPrices =>
+  Object.fromEntries(Array.from({ length: 20 }, (_, i) => [String(2006 + i), price(2006 + i)]));
+
+test("예측 검증 연도: 기준일 2026년이면 2006~2015년으로 2016~2025년을 맞힌다", () => {
+  assert.deepEqual(getBacktestYears("2026-10-28"), { basisFrom: 2006, basisTo: 2015, targetTo: 2025 });
+});
+
+test("예측 검증: 20년 내내 해마다 2배가 되면 예측이 실제와 같아 오차 0", () => {
+  // 2006년 1 → 2015년 512 (9번 변화, 기준 상승률 100%) → 2025년 예측 512 × 2^10 = 524,288 = 실제
+  const result = backtestCase(yearsFrom2006((y) => 2 ** (y - 2006)), "2026-10-28");
+  assert.ok(result);
+  assert.equal(result.length, 10);
+  assert.equal(result[0].year, 2016);
+  assert.equal(result[9].year, 2025);
+  for (const { error } of result) assert.ok(error < 0.000001);
+});
+
+test("예측 검증: 앞 10년은 2배씩, 뒤 10년은 그대로면 마지막 해 오차 = 2^10 − 1 = 1023배", () => {
+  // 2025년 예측 524,288, 실제 512 → |524,288 − 512| ÷ 512 = 1,023
+  const result = backtestCase(yearsFrom2006((y) => 2 ** Math.min(y - 2006, 9)), "2026-10-28");
+  assert.ok(result);
+  assert.equal(Math.round(result[9].error * 100) / 100, 1023);
+  assert.equal(Math.round(result[0].error * 100) / 100, 1); // 2016년: 예측 1,024, 실제 512 → 오차 1배
+});
+
+test("예측 검증: 20개 연도 중 하나라도 빠지면 검증하지 않는다", () => {
+  const missing = yearsFrom2006((y) => 100 + y);
+  delete missing["2010"];
+  assert.equal(backtestCase(missing, "2026-10-28"), null);
 });
