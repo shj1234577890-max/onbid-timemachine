@@ -43,3 +43,11 @@ export function getCurrentPrice(item: Case, asOfDate: DateString): number | null
   const sum = prices.reduce((total, price) => total + price, 0);
   return Math.round(sum / prices.length); // 시세는 양수라 Math.round가 "0.5는 올림"과 같다.
 }
+
+/**
+ * 수익률(%) = (현재 시세 − 낙찰가) ÷ 낙찰가 × 100.
+ * 반올림하지 않은 값을 돌려준다. 반올림은 화면에 보여 줄 때 `formatProfitRate`가 한다.
+ */
+export function getProfitRate(currentPrice: number, winningBid: number): number {
+  return ((currentPrice - winningBid) / winningBid) * 100;
+}
