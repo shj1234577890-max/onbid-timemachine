@@ -45,3 +45,36 @@ export function formatWonChange(won: number): string {
   if (man === 0) return "0원";
   return (man > 0 ? "+" : MINUS) + manToText(Math.abs(man));
 }
+
+/**
+ * 백분율을 소수점 첫째 자리까지 반올림해 "0.1% 단위 개수"로 돌려준다. (62.2857 → 623)
+ * 컴퓨터의 소수 계산 오차(1.45 × 10 = 14.499999…) 때문에 반올림이 틀리지 않도록, 유효숫자 12자리로 먼저 정리한다.
+ */
+function toTenths(percent: number): number {
+  return roundHalfAwayFromZero(Number((percent * 10).toPrecision(12)));
+}
+
+/** 0.1% 단위 개수(양수)를 "62.3"처럼 소수점 한 자리 글자로 바꾼다. */
+function tenthsToText(tenths: number): string {
+  return (tenths / 10).toFixed(1);
+}
+
+/**
+ * 수익률(%)을 글자로 바꾼다. 소수점 한 자리까지 보여 준다.
+ * 부호는 반올림한 뒤의 값으로 정한다. 이익은 "+62.3%", 손실은 "손실 −12.3%", 0은 "0.0%"이다.
+ * 예: 62.2857 → "+62.3%", −12.25 → "손실 −12.3%", −0.04 → "0.0%"
+ */
+export function formatProfitRate(percent: number): string {
+  const tenths = toTenths(percent);
+  if (tenths === 0) return "0.0%";
+  if (tenths > 0) return `+${tenthsToText(tenths)}%`;
+  return `손실 ${MINUS}${tenthsToText(-tenths)}%`;
+}
+
+/**
+ * 감정가 대비 낙찰가율(%)을 글자로 바꾼다. 부호 없이 소수점 한 자리까지 보여 준다.
+ * 예: 90.3226 → "90.3%"
+ */
+export function formatBidRatio(percent: number): string {
+  return `${tenthsToText(Math.abs(toTenths(percent)))}%`;
+}
