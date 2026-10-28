@@ -4,6 +4,10 @@ export default function Home() {
   return (
     <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
       <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
+        {/* 앱 이름을 첫 화면 맨 위에 큰 제목으로 보여 줍니다. */}
+        <h1 className="text-4xl font-bold tracking-tight text-black dark:text-zinc-50">
+          온비드 타임머신
+        </h1>
         <Image
           className="dark:invert h-5 w-[100px]"
           src="/next.svg"
