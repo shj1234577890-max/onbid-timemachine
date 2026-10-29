@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import ForecastSection from "@/components/ForecastSection";
+import OnbidButton from "@/components/OnbidButton";
 import ResultSummary from "@/components/ResultSummary";
 import { casesData, findListedCase, getListedCases } from "@/lib/cases";
 
@@ -46,6 +47,7 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
 
       <ResultSummary listed={listed} />
       <ForecastSection listed={listed} asOfDate={casesData.asOfDate} />
+      <OnbidButton />
     </main>
   );
 }
