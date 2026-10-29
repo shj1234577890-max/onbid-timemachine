@@ -2,6 +2,7 @@
 // 예측 그래프(PLAN 18), AI 해설(PLAN 22), 온비드 버튼(PLAN 19)은 이 화면 아래쪽에 차례로 붙인다.
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import ForecastSection from "@/components/ForecastSection";
 import ResultSummary from "@/components/ResultSummary";
 import { casesData, findListedCase, getListedCases } from "@/lib/cases";
 
@@ -44,6 +45,7 @@ export default async function CasePage({ params }: PageProps<"/cases/[id]">) {
       </header>
 
       <ResultSummary listed={listed} />
+      <ForecastSection listed={listed} asOfDate={casesData.asOfDate} />
     </main>
   );
 }

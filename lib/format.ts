@@ -72,6 +72,17 @@ export function formatProfitRate(percent: number): string {
 }
 
 /**
+ * 예측 수익률(%)을 정수 퍼센트 글자로 바꾼다. 10년 뒤 예측은 소수점 한 자리까지 보여 주면 오히려 정확한 것처럼 보여서 정수로 보여 준다.
+ * 부호는 반올림한 뒤의 값으로 정한다. 이익은 "+78%", 손실은 "−44%", 0은 "0%"이다.
+ * 예: 117.9 → "+118%", −44.2 → "−44%", 0.4 → "0%"
+ */
+export function formatOutlookRate(percent: number): string {
+  const rounded = roundHalfAwayFromZero(Number(percent.toPrecision(12)));
+  if (rounded === 0) return "0%";
+  return `${rounded > 0 ? "+" : MINUS}${Math.abs(rounded)}%`;
+}
+
+/**
  * 감정가 대비 낙찰가율(%)을 글자로 바꾼다. 부호 없이 소수점 한 자리까지 보여 준다.
  * 예: 90.3226 → "90.3%"
  */
