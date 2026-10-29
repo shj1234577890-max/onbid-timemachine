@@ -47,3 +47,6 @@ next-env.d.ts
 # 작업 도구 기록 (커밋하지 않는다)
 /.bkit/
 /.claude/
+
+.vercel
+.env*
