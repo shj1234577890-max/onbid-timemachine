@@ -8,12 +8,17 @@ export default function Home() {
     <main className="mx-auto flex w-full max-w-3xl flex-1 flex-col gap-12 px-4 py-12 sm:px-6 sm:py-16">
       {/* break-keep: 한국어가 "기회를"처럼 단어 중간에서 끊기지 않고 띄어쓰기에서만 줄을 바꾸게 한다. */}
       <section className="flex flex-col gap-4 break-keep">
-        {/* 앱 이름: 크고 굵게, 파랑→보라 색 흐름으로 눈에 먼저 들어오게 한다. 글자 색이 안 보이는 환경을 위해 text 색도 함께 둔다. */}
-        <p className="text-5xl font-extrabold leading-none tracking-tight text-blue-700 sm:text-7xl dark:text-blue-300">
-          <span className="bg-gradient-to-r from-blue-700 via-indigo-600 to-violet-600 bg-clip-text text-transparent dark:from-blue-300 dark:via-indigo-300 dark:to-violet-300">
-            온비드 타임머신
-          </span>
-        </p>
+        {/* 앱 이름: 영문 작은 글씨 위에, 한글 이름은 진한 색으로 크게, 핵심 단어 "타임머신"만 은은한 색 흐름으로 포인트를 준다. */}
+        <div className="flex flex-col gap-3">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-zinc-500 dark:text-zinc-400">Onbid Time Machine</p>
+          <p className="text-5xl font-bold leading-[1.1] tracking-tighter text-zinc-900 sm:text-7xl dark:text-zinc-50">
+            온비드{" "}
+            <span className="bg-gradient-to-br from-blue-700 to-indigo-500 bg-clip-text text-transparent dark:from-blue-300 dark:to-indigo-300">
+              타임머신
+            </span>
+          </p>
+          <span aria-hidden="true" className="mt-1 h-1 w-12 rounded-full bg-blue-700 dark:bg-blue-300" />
+        </div>
         <h1 className="text-2xl font-bold leading-tight tracking-tight text-zinc-900 sm:text-3xl dark:text-zinc-50">
           지난 10년, 공매가 증명한 기회를
           <br />
