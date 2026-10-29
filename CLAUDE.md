@@ -21,6 +21,7 @@ npm run lint    # ESLint
 npm test        # 계산·표시 규칙·금지어 자동 채점 (Node 기본 테스트)
 npm run backtest        # 예측 검증 (사례별 오차 출력)
 npm run check:secrets   # 비밀 키 검사 (build 뒤에 실행, 값은 출력하지 않음)
+npm run test:e2e        # 화면 자동 테스트 (Playwright, 설치된 Chrome 사용, 알아서 build 후 서버를 띄움)
 ```
 
 테스트는 Node 기본 테스트(`tests/*.test.ts`)를 쓴다. `lib/` 파일끼리는 `./x.ts`처럼 상대경로와 `.ts` 확장자로 서로 부르고, 타입만 가져올 때는 `import type`을 쓴다. (DESIGN §1.1)

@@ -22,6 +22,7 @@ AI 해설을 보려면 프로젝트 폴더에 `.env` 파일을 만들고 `OPENAI
 | `npm run build` | 배포용 빌드 (타입 검사 포함) |
 | `npm run backtest` | 예측 검증 (사례별 오차 출력) |
 | `npm run check:secrets` | 비밀 키가 커밋·빌드 결과에 없는지 검사 (build 뒤에 실행) |
+| `npm run test:e2e` | 화면 자동 테스트 15개 (컴퓨터에 설치된 Chrome 사용, 빌드부터 알아서 함) |
 
 ## 문서
 
