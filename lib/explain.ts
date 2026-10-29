@@ -2,6 +2,7 @@
 // 계산은 하지 않는다. 이미 계산된 ListedCase를 글자로 바꿔 넘길 뿐이다. 예측 숫자는 넘기지 않는다.
 import { formatBidRatio, formatProfitRate, formatWon, formatWonChange } from "./format.ts";
 import type { ListedCase } from "./cases.ts";
+import { findBannedPhrase } from "./rules.ts";
 import type { DateString } from "./types.ts";
 
 /** AI에게 주는 규칙 (DESIGN §6). 금지어 목록은 lib/rules.ts 하나만 쓰므로 21번에서 검사로 함께 막는다. */
@@ -37,4 +38,26 @@ export function buildExplainInput(listed: ListedCase, asOfDate: DateString): str
     `시세 차익: ${formatWonChange(listed.profitAmount)}`,
     `수익률: ${formatProfitRate(listed.profitRate)}`,
   ].join("\n");
+}
+
+/** 글 속의 숫자 덩어리. "4,486"이나 "89.0"처럼 쉼표와 소수점을 한 덩어리로 본다. */
+function extractNumbers(text: string): string[] {
+  return text.match(/\d[\d,]*(?:\.\d+)?/g) ?? [];
+}
+
+/**
+ * AI가 쓴 해설이 규칙을 지켰는지 검사한다. (DESIGN §6 규칙 1·2)
+ * - 금지어(lib/rules.ts)가 있으면 실패
+ * - 우리가 준 글에 없는 숫자가 있으면 실패 (새 숫자를 만들거나 계산한 것으로 본다)
+ * 통과하면 null, 실패하면 이유를 돌려준다. 이유는 서버 안에서만 쓰고 화면에는 내보내지 않는다.
+ */
+export function checkExplanation(text: string, input: string): string | null {
+  const banned = findBannedPhrase(text);
+  if (banned !== null) return `금지어: ${banned}`;
+
+  const allowed = new Set(extractNumbers(input));
+  const invented = extractNumbers(text).find((n) => !allowed.has(n));
+  if (invented !== undefined) return `새 숫자: ${invented}`;
+
+  return null;
 }
