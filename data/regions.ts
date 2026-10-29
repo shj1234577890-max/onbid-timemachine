@@ -3,6 +3,11 @@
 // 사례가 없는 지역도 버튼으로 보여 주고, 고르면 "사례 없음" 안내를 띄운다. (PRD §5)
 import type { Sido } from "../lib/types.ts";
 
+/** 지역 열쇠: 시·도와 시·군·구를 "|"로 잇는다. (예: "대구|수성구") 지역별 사례 수를 셀 때 쓴다. */
+export function regionKey(sido: Sido, sigungu: string): string {
+  return `${sido}|${sigungu}`;
+}
+
 /** 시·도 버튼에 보여 줄 순서 */
 export const SIDO_LIST: readonly Sido[] = ["대구", "경북"];
 
