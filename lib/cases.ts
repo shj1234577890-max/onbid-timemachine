@@ -1,5 +1,6 @@
 // Design Ref: §5.1 목록에 보일 사례 — 사례 파일을 읽어, 목록·결과 화면·AI 해설이 함께 쓸 "보여 줄 사례"를 고른다.
 import casesFile from "../data/cases.json" with { type: "json" };
+import { formatProfitRate, formatWon } from "./format.ts";
 import { getBidRatio, getCurrentPrice, getProfitAmount, getProfitRate } from "./profit.ts";
 import type { Case, CasesFile, DateString, Sido } from "./types.ts";
 
@@ -77,6 +78,46 @@ export function getListedCases(cases: readonly Case[], asOfDate: DateString): Li
   return listed.sort(
     (a, b) => b.profitRate - a.profitRate || a.item.auctionDate.localeCompare(b.item.auctionDate),
   );
+}
+
+/**
+ * 목록 카드 한 장에 보여 줄 글자 묶음. 서버에서 미리 만들어 브라우저로 넘긴다.
+ * 동·호수와 낙찰자 정보는 넣지 않는다. (PRD §7)
+ */
+export type CaseSummary = {
+  id: string;
+  sido: Sido;
+  sigungu: string;
+  dong: string;
+  complexName: string;
+  /** "84㎡" — 전용면적의 정수 부분 */
+  areaText: string;
+  /** "2016.05" — 낙찰 연월 */
+  auctionMonthText: string;
+  /** "2억 8,000만 원" */
+  winningBidText: string;
+  /** "+62.3%" 또는 "손실 −12.3%" */
+  profitRateText: string;
+  /** 반올림한 뒤 손실이면 true. 화면에서 빨간색으로 보여 준다. */
+  isLoss: boolean;
+};
+
+/** 목록 사례 하나를 카드용 글자 묶음으로 바꾼다. */
+export function toCaseSummary({ item, profitRate }: ListedCase): CaseSummary {
+  const profitRateText = formatProfitRate(profitRate);
+  return {
+    id: item.id,
+    sido: item.sido,
+    sigungu: item.sigungu,
+    dong: item.dong,
+    complexName: item.complexName,
+    areaText: `${Math.floor(item.areaM2)}㎡`,
+    auctionMonthText: item.auctionDate.slice(0, 7).replace("-", "."),
+    winningBidText: formatWon(item.winningBid),
+    profitRateText,
+    // 표시 글자와 색이 어긋나지 않도록, 반올림한 표시 글자를 보고 손실인지 정한다.
+    isLoss: profitRateText.startsWith("손실"),
+  };
 }
 
 /** 고른 시·도와 시·군·구의 사례만 남긴다. 줄 세운 순서는 그대로 둔다. */

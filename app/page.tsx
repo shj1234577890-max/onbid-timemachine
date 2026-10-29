@@ -1,18 +1,7 @@
 // Design Ref: §2.2 첫 화면 — 앱 이름, 큰 제목, 작은 설명 아래에 지역 선택을 둔다.
 import { Suspense } from "react";
 import RegionPicker from "@/components/RegionPicker";
-import { regionKey } from "@/data/regions";
-import { casesData, getListedCases } from "@/lib/cases";
-
-/** 지역별 목록 사례 수. 서버에서 미리 세어 지역 선택 부품에 넘긴다. */
-function countCasesByRegion(): Record<string, number> {
-  const counts: Record<string, number> = {};
-  for (const { item } of getListedCases(casesData.cases, casesData.asOfDate)) {
-    const key = regionKey(item.sido, item.sigungu);
-    counts[key] = (counts[key] ?? 0) + 1;
-  }
-  return counts;
-}
+import { casesData, getListedCases, toCaseSummary } from "@/lib/cases";
 
 export default function Home() {
   return (
@@ -34,7 +23,9 @@ export default function Home() {
 
       {/* 지역 선택은 주소의 값을 브라우저에서 읽으므로 Suspense로 감싼다. 그 위 문구는 미리 만들어 빠르게 보인다. */}
       <Suspense fallback={<p className="text-sm text-zinc-500">지역 선택을 준비하고 있어요…</p>}>
-        <RegionPicker caseCounts={countCasesByRegion()} />
+        <RegionPicker
+          cases={getListedCases(casesData.cases, casesData.asOfDate).map(toCaseSummary)}
+        />
       </Suspense>
     </main>
   );

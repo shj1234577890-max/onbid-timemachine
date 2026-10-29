@@ -8,6 +8,7 @@ import {
   getAuctionPeriod,
   getHoldingYears,
   getListedCases,
+  toCaseSummary,
 } from "../lib/cases.ts";
 
 const { asOfDate, cases } = casesData;
@@ -41,6 +42,35 @@ test("사례 찾기: 목록 제외 사례와 없는 번호는 null", () => {
   assert.equal(findListedCase(cases, asOfDate, "dg-suseong-001")?.item.id, "dg-suseong-001");
   assert.equal(findListedCase(cases, asOfDate, "dg-seo-001"), null);
   assert.equal(findListedCase(cases, asOfDate, "no-such-id"), null);
+});
+
+test("목록 카드 글자: 면적·낙찰 연월·금액·수익률, 손실이면 빨간색 표시", () => {
+  const item = {
+    id: "card",
+    sido: "대구" as const,
+    sigungu: "수성구",
+    dong: "범어동",
+    complexName: "범어 예시아파트",
+    areaM2: 84.9,
+    auctionDate: "2016-05-12",
+    appraisalPrice: 310_000_000,
+    winningBid: 280_000_000,
+    yearlyPrices: {},
+    recentDeals: [],
+  };
+  const gain = toCaseSummary({ item, currentPrice: 454_400_000, profitAmount: 174_400_000, profitRate: 62.2857, bidRatio: 90.3, holdingYears: 10 });
+  assert.equal(gain.areaText, "84㎡");
+  assert.equal(gain.auctionMonthText, "2016.05");
+  assert.equal(gain.winningBidText, "2억 8,000만 원");
+  assert.equal(gain.profitRateText, "+62.3%");
+  assert.equal(gain.isLoss, false);
+
+  const loss = toCaseSummary({ item, currentPrice: 1, profitAmount: -1, profitRate: -12.25, bidRatio: 90.3, holdingYears: 10 });
+  assert.equal(loss.profitRateText, "손실 −12.3%");
+  assert.equal(loss.isLoss, true);
+
+  // 반올림하면 0.0%가 되는 아주 작은 손실은 손실(빨간색)로 보지 않는다.
+  assert.equal(toCaseSummary({ item, currentPrice: 1, profitAmount: -1, profitRate: -0.04, bidRatio: 90.3, holdingYears: 10 }).isLoss, false);
 });
 
 test("보유 기간은 반올림한 햇수", () => {
