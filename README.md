@@ -1,36 +1,29 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 온비드 타임머신
 
-## Getting Started
+"10년 전 온비드 공매로 샀다면 지금 얼마를 벌었을까"를 보여 주고, 앞으로 10년의 시세를 예측해 보여 주는 웹앱입니다. 대구·경북 아파트, 2015~2017년 낙찰 사례가 대상입니다.
 
-First, run the development server:
+> 지금은 **예시 데이터**로 동작합니다. 화면 맨 위에 "예시 데이터" 띠가 표시됩니다. 실제 데이터로 바꾸는 일은 보류 중입니다.
+
+## 실행
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
+npm run dev      # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+AI 해설을 보려면 프로젝트 폴더에 `.env` 파일을 만들고 `OPENAI_API_KEY=...`를 넣습니다. 키가 없어도 앱은 동작하고, 해설 칸만 보이지 않습니다.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## 명령어
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| 명령 | 하는 일 |
+|---|---|
+| `npm test` | 계산·표시 규칙·금지어·데이터 형식을 자동 채점 |
+| `npm run lint` | 코드 검사 |
+| `npm run build` | 배포용 빌드 (타입 검사 포함) |
+| `npm run backtest` | 예측 검증 (사례별 오차 출력) |
+| `npm run check:secrets` | 비밀 키가 커밋·빌드 결과에 없는지 검사 (build 뒤에 실행) |
 
-## Learn More
+## 문서
 
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `PRD.md` 기획서 → `PLAN.md` 개발 계획 → `DESIGN.md` 설계서
+- `CLAUDE.md` 작업 규칙

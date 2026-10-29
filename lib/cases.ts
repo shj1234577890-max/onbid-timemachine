@@ -3,9 +3,10 @@ import casesFile from "../data/cases.json" with { type: "json" };
 import { formatProfitRate, formatWon } from "./format.ts";
 import { getBidRatio, getCurrentPrice, getProfitAmount, getProfitRate } from "./profit.ts";
 import type { Case, CasesFile, DateString, Sido } from "./types.ts";
+import { parseCasesFile } from "./validate.ts";
 
 /** 예시 사례 파일 전체 (데이터 기준일, 예시 데이터 여부, 사례 목록) */
-export const casesData = casesFile as CasesFile;
+export const casesData: CasesFile = parseCasesFile(casesFile);
 
 /** 목록 조건을 통과한 사례 하나와, 그 사례로 미리 계산해 둔 값 */
 export type ListedCase = {

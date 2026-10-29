@@ -9,8 +9,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 **온비드 타임머신**: "10년 전 온비드 공매로 샀다면 지금 얼마를 벌었을까"를 보여 주고, 앞으로 10년의 시세를 예측해 보여 주는 웹앱이다. 목적은 온비드 홍보와 낙찰가율 향상이다.
 
 - 기획의 기준 문서는 `PRD.md`다. 기능, 규칙, 범위를 정할 때 PRD를 먼저 읽고 따른다. PRD와 다르게 만들어야 하면 먼저 사용자에게 묻는다.
-- 개발은 `PRD.md`의 "9. 개발 단위" 순서대로 한 단위씩 진행한다.
-- 현재 상태: `create-next-app` 기본 뼈대만 있다. `app/page.tsx`는 아직 기본 템플릿 화면이다.
+- 개발은 `PLAN.md`의 번호 순서대로 한 작업씩 진행한다.
+- 현재 상태: 예시 데이터로 PRD의 전체 기능(지역 선택 → 사례 목록 → 수익 결과 → 10년 예측 그래프 → AI 해설 → 온비드 버튼)이 동작한다. 실제 데이터로 바꾸는 일(PLAN 25번)은 보류 중이다. 설계는 `DESIGN.md`, 진행은 `PLAN.md`를 본다.
 
 ## 명령어
 
@@ -18,9 +18,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 npm run dev     # 개발 서버 (http://localhost:3000)
 npm run build   # 프로덕션 빌드 (타입 검사 포함)
 npm run lint    # ESLint
+npm test        # 계산·표시 규칙·금지어 자동 채점 (Node 기본 테스트)
+npm run backtest        # 예측 검증 (사례별 오차 출력)
+npm run check:secrets   # 비밀 키 검사 (build 뒤에 실행, 값은 출력하지 않음)
 ```
 
-테스트 도구는 아직 설치돼 있지 않다.
+테스트는 Node 기본 테스트(`tests/*.test.ts`)를 쓴다. `lib/` 파일끼리는 `./x.ts`처럼 상대경로와 `.ts` 확장자로 서로 부르고, 타입만 가져올 때는 `import type`을 쓴다. (DESIGN §1.1)
 
 ## 기술 구성 (변경 금지)
 

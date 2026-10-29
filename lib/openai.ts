@@ -5,6 +5,9 @@ import OpenAI from "openai";
 /** 해설 한 단락만 쓰면 되므로 빠르고 저렴한 모델을 쓴다. (DESIGN §1) */
 export const EXPLAIN_MODEL = "gpt-4o-mini";
 
+/** AI 응답을 기다리는 최대 시간(밀리초). 넘기면 실패로 처리한다. */
+export const EXPLAIN_TIMEOUT_MS = 15_000;
+
 /** 키가 없으면 null. 호출하는 쪽이 "해설 없음"으로 처리한다. 키 값은 어디에도 출력하지 않는다. */
 export function getOpenAI(): OpenAI | null {
   const apiKey = process.env.OPENAI_API_KEY;

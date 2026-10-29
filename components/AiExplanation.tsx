@@ -12,6 +12,8 @@ export default function AiExplanation({ id }: { id: string }) {
   useEffect(() => {
     // 화면을 떠나거나 다시 그려질 때 이전 요청은 취소한다.
     const controller = new AbortController();
+    // 서버가 응답하지 않아도 "쓰는 중…"이 끝없이 남지 않도록 20초가 지나면 포기하고 칸을 숨긴다.
+    const timer = setTimeout(() => controller.abort("timeout"), 20_000);
     fetch("/api/explain", {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -27,7 +29,10 @@ export default function AiExplanation({ id }: { id: string }) {
         if (error instanceof DOMException && error.name === "AbortError") return;
         setState({ status: "failed" });
       });
-    return () => controller.abort();
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
   }, [id]);
 
   if (state.status === "failed") return null;
