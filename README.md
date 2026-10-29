@@ -17,12 +17,12 @@ AI 해설을 보려면 프로젝트 폴더에 `.env` 파일을 만들고 `OPENAI
 
 | 명령 | 하는 일 |
 |---|---|
-| `npm test` | 계산·표시 규칙·금지어·데이터 형식을 자동 채점 |
+| `npm test` | 계산·표시 규칙·금지어·데이터 형식·요청 검사를 자동 채점 |
 | `npm run lint` | 코드 검사 |
 | `npm run build` | 배포용 빌드 (타입 검사 포함) |
 | `npm run backtest` | 예측 검증 (사례별 오차 출력) |
 | `npm run check:secrets` | 비밀 키가 커밋·빌드 결과에 없는지 검사 (build 뒤에 실행) |
-| `npm run test:e2e` | 화면 자동 테스트 15개 (컴퓨터에 설치된 Chrome 사용, 빌드부터 알아서 함) |
+| `npm run test:e2e` | 화면 자동 테스트 17개 (컴퓨터에 설치된 Chrome 사용, 빌드부터 알아서 함) |
 
 ## 문서
 

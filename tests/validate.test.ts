@@ -38,3 +38,16 @@ test("문제가 있으면 읽는 단계에서 멈춘다", () => {
   assert.throws(() => parseCasesFile({ asOfDate: "2026-10-28", isSample: true, cases: "없음" }), /형식 오류/);
   assert.throws(() => parseCasesFile(null), /형식 오류/);
 });
+
+test("허용하지 않은 칸(동·호수, 낙찰자 정보 등)이 섞이면 막는다 (SEC-008)", () => {
+  const d = good();
+  d.cases[0]["호수"] = "1203호";
+  d.cases[1]["낙찰자"] = "홍길동";
+  (d.cases[2].recentDeals as Record<string, unknown>[])[0]["동호수"] = "101동 502호";
+  (d as Record<string, unknown>)["메모"] = "x";
+  const problems = validateCasesFile(d);
+  assert.ok(problems.some((p) => p.startsWith("cases[0].호수")));
+  assert.ok(problems.some((p) => p.startsWith("cases[1].낙찰자")));
+  assert.ok(problems.some((p) => p.includes("recentDeals[0].동호수")));
+  assert.ok(problems.some((p) => p.includes("허용하지 않는 칸: 메모")));
+});

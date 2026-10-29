@@ -4,7 +4,7 @@ import { createCooldown } from "@/lib/cooldown";
 import { buildExplainInput, checkExplanation, EXPLAIN_SYSTEM_PROMPT } from "@/lib/explain";
 import { EXPLAIN_MAX_TOKENS, EXPLAIN_MODEL, EXPLAIN_TIMEOUT_MS, getOpenAI } from "@/lib/openai";
 import { createRateLimiter } from "@/lib/rate-limit";
-import { isJsonRequest, isSameSiteRequest } from "@/lib/request-guard";
+import { getClientKey, isJsonRequest, isSameSiteRequest } from "@/lib/request-guard";
 
 const NOT_FOUND = { error: "사례를 찾을 수 없습니다." };
 const FAILED = { error: "해설을 불러오지 못했습니다." };
@@ -15,6 +15,13 @@ const BAD_REQUEST = { error: "허용하지 않는 요청입니다." };
 const LIMIT_PER_MINUTE = 10;
 const limiter = createRateLimiter(LIMIT_PER_MINUTE, 60_000);
 
+/**
+ * 접속 주소를 알 수 없는 요청은 모두 한 칸을 같이 쓴다. 그래서 한 사람이 10번 불러도 모두가 막히지 않도록 한도를 더 넉넉히 둔다.
+ * (CHECK.md SEC-004)
+ */
+const UNKNOWN_LIMIT_PER_MINUTE = 30;
+const unknownLimiter = createRateLimiter(UNKNOWN_LIMIT_PER_MINUTE, 60_000);
+
 /** 해설이 실패한 사례는 10분 동안 AI를 다시 부르지 않는다. (CHECK.md SEC-002) */
 const failureCooldown = createCooldown(10 * 60_000);
 
@@ -24,17 +31,23 @@ const failureCooldown = createCooldown(10 * 60_000);
  */
 const explanationCache = new Map<string, string>();
 
-/** 지금 AI에게 물어보는 중인 사례. 같은 사례를 여럿이 동시에 열어도 AI는 한 번만 부르고 그 답을 함께 기다린다. */
-const inFlight = new Map<string, Promise<string | null>>();
+type Generated = { text: string } | { reason: string };
 
-function clientKey(request: Request): string {
-  return request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+/** 지금 AI에게 물어보는 중인 사례. 같은 사례를 여럿이 동시에 열어도 AI는 한 번만 부르고 그 답을 함께 기다린다. */
+const inFlight = new Map<string, Promise<Generated>>();
+
+/**
+ * 실패 이유를 서버 기록에 남긴다. (CHECK.md SEC-006)
+ * 남기는 것은 사례 번호와 짧은 이유뿐이다. 키, 접속 주소, 오류 본문은 남기지 않는다.
+ */
+function logFailure(caseId: string, reason: string) {
+  console.error("[explain] 해설 실패", { caseId, reason });
 }
 
-/** AI에게 해설을 받아 검사한다. 통과하면 글, 아니면 null. 실패 원인(키 오류, 시간 초과 등)은 화면에 내보내지 않는다. */
-async function generate(listed: ListedCase): Promise<string | null> {
+/** AI에게 해설을 받아 검사한다. 통과하면 글, 아니면 이유. 실패 원인은 화면에 내보내지 않는다. */
+async function generate(listed: ListedCase): Promise<Generated> {
   const openai = getOpenAI();
-  if (openai === null) return null;
+  if (openai === null) return { reason: "OPENAI_API_KEY 없음" };
   const input = buildExplainInput(listed, casesData.asOfDate);
   try {
     const completion = await openai.chat.completions.create(
@@ -53,14 +66,16 @@ async function generate(listed: ListedCase): Promise<string | null> {
     );
     const choice = completion.choices[0];
     // 길이 제한에 걸려 글이 중간에 끊겼으면 쓰지 않는다.
-    if (choice?.finish_reason === "length") return null;
+    if (choice?.finish_reason === "length") return { reason: "길이 제한에 걸려 글이 끊김" };
     const text = choice?.message?.content?.trim();
-    if (!text) return null;
+    if (!text) return { reason: "빈 응답" };
     // 금지어가 있거나 새 숫자가 섞인 해설은 내보내지 않는다. 화면은 해설 칸을 숨긴다. (PLAN 21번)
-    if (checkExplanation(text, input) !== null) return null;
-    return text;
-  } catch {
-    return null;
+    const problem = checkExplanation(text, input);
+    if (problem !== null) return { reason: `검사 탈락 (${problem})` };
+    return { text };
+  } catch (error) {
+    // 오류 본문에는 요청 정보가 섞일 수 있어 이름만 남긴다. (예: APIConnectionTimeoutError, AuthenticationError)
+    return { reason: `AI 호출 오류 (${error instanceof Error ? error.name : "알 수 없음"})` };
   }
 }
 
@@ -86,17 +101,23 @@ export async function POST(request: Request) {
   // 같은 사례를 이미 물어보는 중이면 그 답을 함께 기다린다. (AI를 새로 부르지 않으므로 호출 횟수에 세지 않는다)
   let pending = inFlight.get(caseId);
   if (pending === undefined) {
-    if (!limiter.allow(clientKey(request))) return Response.json(TOO_MANY, { status: 429 });
+    const clientKey = getClientKey(request.headers);
+    const allowed = clientKey !== null ? limiter.allow(clientKey) : unknownLimiter.allow("unknown");
+    if (!allowed) {
+      console.warn("[explain] 호출 횟수 제한에 걸림", { caseId });
+      return Response.json(TOO_MANY, { status: 429 });
+    }
     pending = generate(listed).finally(() => inFlight.delete(caseId));
     inFlight.set(caseId, pending);
   }
 
-  const text = await pending;
-  if (text === null) {
+  const result = await pending;
+  if ("reason" in result) {
+    logFailure(caseId, result.reason);
     // 키가 없는 경우도 같이 쉬게 되지만, 키가 없으면 어차피 매번 실패하므로 AI 요금은 나가지 않는다.
     failureCooldown.mark(caseId);
     return Response.json(FAILED, { status: 502 });
   }
-  explanationCache.set(caseId, text);
-  return Response.json({ text });
+  explanationCache.set(caseId, result.text);
+  return Response.json({ text: result.text });
 }

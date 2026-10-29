@@ -15,3 +15,15 @@ export function isSameSiteRequest(headers: Headers): boolean {
   const site = headers.get("sec-fetch-site");
   return site === null || site === "same-origin";
 }
+
+/**
+ * 호출 제한에 쓸 "사용자 구분 값". 알 수 없으면 null. (CHECK.md SEC-004)
+ * Vercel이 직접 붙이는 값을 먼저 믿는다. 일반 x-forwarded-for는 Vercel 밖에서는 요청하는 사람이 마음대로 적을 수 있다.
+ * 값이 길면 자른다. 아주 긴 값으로 서버 메모리를 채우는 일을 막기 위해서다.
+ */
+export function getClientKey(headers: Headers): string | null {
+  const raw =
+    headers.get("x-vercel-forwarded-for") ?? headers.get("x-real-ip") ?? headers.get("x-forwarded-for")?.split(",")[0] ?? null;
+  const key = raw?.trim().slice(0, 64);
+  return key ? key : null;
+}

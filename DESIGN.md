@@ -195,6 +195,7 @@ data/cases.json ──→ lib/cases.ts ──→ 목록용 사례 거르기·정
 
 - 금액은 모두 **원 단위 정수**로 저장한다. 억·만 원 표기는 화면에 보여 줄 때만 바꾼다.
 - 사례 파일을 읽을 때 위 형식을 검사한다. (`lib/validate.ts`) 날짜·금액·시·도·시·군·구가 틀리거나 번호가 겹치면 앱이 시작될 때 어디가 틀렸는지 알려 주며 멈춘다. 실제 데이터로 바꿀 때 잘못된 값이 조용히 계산에 섞이지 않게 하기 위해서다.
+- 위 표에 없는 칸(동·호수, 낙찰자 이름·연락처 등 개인정보가 들어올 수 있는 칸)이 파일에 섞여 있으면 같은 검사에서 오류로 막는다. 새 칸이 정말 필요하면 이 표와 `lib/validate.ts`의 허용 목록을 함께 고친다.
 - 예시 데이터에는 확인용으로 다음 사례를 일부러 넣는다: 손실 사례, 최근 거래가 없는 사례, 연도별 시세가 빠진 해가 있는 사례, 2015~2017년 밖에 낙찰된 사례, 사례가 하나도 없는 시·군·구.
 
 ### 4.3 지역 목록 (`data/regions.ts`)
@@ -298,6 +299,10 @@ AI에게 주는 규칙:
 - AI 응답은 **15초**까지만 기다리고, 실패하면 다시 시도하지 않는다. 화면도 **20초**가 지나면 포기하고 해설 칸을 숨긴다. "해설을 쓰는 중…"이 끝없이 남지 않게 하기 위해서다.
 - 검사를 통과한 해설은 사례 번호별로 서버 메모리에 보관한다. 같은 사례를 여러 번 열어도 AI는 한 번만 부른다.
 - 새로 AI를 부르는 요청은 접속 주소당 1분에 10번으로 제한한다. (`lib/rate-limit.ts`) 서버 메모리로만 세므로 서버를 다시 켜면 0으로 돌아가고, 서버가 여러 대면 한도가 대수만큼 늘 수 있다. 더 엄격한 제한은 Vercel 배포(Part 5) 때 외부 저장소로 정한다.
+- 호출 제한의 사용자 구분 값은 Vercel이 붙이는 `x-vercel-forwarded-for`를 먼저 쓰고, 없으면 `x-real-ip`, 일반 `x-forwarded-for`의 첫 값 순서로 쓴다. 어느 것도 없는 요청은 한 칸을 같이 쓰되 한도를 1분 30번으로 넉넉히 둬서 한 사람 때문에 모두가 막히지 않게 한다. (`lib/request-guard.ts`)
+- 요청은 `Content-Type: application/json`이어야 하고(아니면 415), 브라우저가 `Sec-Fetch-Site`로 "다른 사이트에서 왔다"고 알리면 403으로 거절한다. 같은 사례를 동시에 열면 AI는 한 번만 부르고 답을 함께 기다리며, 실패한 사례는 10분간 AI를 다시 부르지 않는다. AI 응답은 600토큰까지, 해설은 600자까지만 받는다.
+- AI 해설 검사는 PRD의 금지어 5개 외에 권유 표현("매수하세요", "투자하세요", "팔아야" 등)과 말로 바꾼 수량 표현("두 배", "2배", "절반", "반토막")도 막는다. (`lib/rules.ts`의 `findAiBannedPhrase`) 화면 문구 전체 검색은 PRD의 5개만 쓴다.
+- 해설이 실패하면 사례 번호와 짧은 이유만 서버 기록(`console.error`)에 남긴다. 키, 접속 주소, 오류 본문은 남기지 않는다.
 
 ## 7. 보안
 
@@ -305,6 +310,9 @@ AI에게 주는 규칙:
 - 화면 코드에는 어떤 키도, `NEXT_PUBLIC_` 이름도 쓰지 않는다.
 - 데이터 파일에는 동·호수, 낙찰자 이름·연락처를 넣지 않는다.
 - Vercel 배포 때는 키를 Vercel 환경변수 설정에 입력한다 (Part 5).
+- 배포할 때 `.env`가 올라가지 않도록 `.vercelignore`가 `.env*`, `.bkit`, `.claude`, `e2e`, `tests`를 뺀다. Vercel 환경변수에는 `OPENAI_API_KEY` 하나만 넣는다. (다른 토큰은 앱 실행에 필요 없다)
+- 모든 응답에 보안 헤더를 붙인다. (`next.config.ts`) `Content-Security-Policy`(같은 사이트의 자원만, 남의 사이트 iframe 금지), `X-Content-Type-Options: nosniff`, `Referrer-Policy`, `Permissions-Policy`를 쓰고 `X-Powered-By`는 뺀다. 개발 서버에서만 `'unsafe-eval'`을 허용한다.
+- 가장 확실한 비용 상한은 OpenAI 대시보드의 **월 예산 설정**이다. 코드의 호출 제한은 서버 메모리에만 있어 서버가 여러 대면 느슨해진다.
 
 ## 8. 확인 계획
 
@@ -354,6 +362,8 @@ my-app/
 │  ├─ notices.ts              예측 안내 문구 2종과 물가 가정 문구
 │  ├─ explain.ts              AI에게 넘길 글·규칙, 해설 검사
 │  ├─ rate-limit.ts           AI 호출 횟수 제한
+│  ├─ request-guard.ts        요청 검사(JSON·같은 사이트)와 사용자 구분 값
+│  ├─ cooldown.ts             실패한 사례를 잠시 쉬게 하기
 │  ├─ validate.ts             사례 파일 형식 검사
 │  └─ openai.ts               AI 연결 (서버 전용)
 └─ tests/
@@ -365,11 +375,13 @@ my-app/
    ├─ banned-phrases.test.ts  화면 소스 전체 금지어 검색
    ├─ explain.test.ts         AI 입력 글·해설 검사
    ├─ rate-limit.test.ts      호출 횟수 제한
+   ├─ request-guard.test.ts   요청 검사·사용자 구분 값
+   ├─ cooldown.test.ts        실패 사례 쉬기
    └─ validate.test.ts        사례 파일 형식 검사
 
 (루트) scripts/backtest.ts      예측 검증 실행 (`npm run backtest`)
 (루트) scripts/check-secrets.ts 비밀 키 검사 (`npm run check:secrets`)
-(루트) e2e/flow.spec.ts         화면 자동 테스트 15개 (`npm run test:e2e`, 설정은 playwright.config.ts)
+(루트) e2e/flow.spec.ts         화면 자동 테스트 17개 (`npm run test:e2e`, 설정은 playwright.config.ts)
 ```
 
 **[브라우저] 표시가 붙은 부품:** 사용자의 브라우저에서 움직이는 부품이다. 파일 맨 위에 `"use client"`를 붙인다.

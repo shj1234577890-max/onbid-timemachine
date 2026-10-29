@@ -43,3 +43,7 @@ next-env.d.ts
 # Playwright
 /test-results/
 /playwright-report/
+
+# 작업 도구 기록 (커밋하지 않는다)
+/.bkit/
+/.claude/

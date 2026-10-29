@@ -148,3 +148,31 @@ test.describe("휴대폰 화면 (375px)", () => {
     });
   }
 });
+
+test.describe("보안 헤더 (CHECK.md SEC-003)", () => {
+  test("응답에 보안 헤더가 있고 X-Powered-By는 없다", async ({ page }) => {
+    const res = await page.goto("/");
+    const h = res!.headers();
+    expect(h["content-security-policy"]).toContain("frame-ancestors 'none'");
+    expect(h["content-security-policy"]).toContain("default-src 'self'");
+    expect(h["x-content-type-options"]).toBe("nosniff");
+    expect(h["referrer-policy"]).toBe("strict-origin-when-cross-origin");
+    expect(h["permissions-policy"]).toContain("camera=()");
+    expect(h["x-powered-by"]).toBeUndefined();
+  });
+
+  test("보안 헤더가 있어도 그래프와 AI 해설이 정상이고 브라우저가 막은 것이 없다", async ({ page }) => {
+    const blocked: string[] = [];
+    page.on("console", (m) => {
+      if (m.type() === "error" && /Content Security Policy|Refused to/i.test(m.text())) blocked.push(m.text());
+    });
+    page.on("pageerror", (e) => blocked.push(String(e)));
+    await mockExplain(page, { status: 200, body: { text: FAKE_TEXT } });
+    await page.goto("/cases/dg-suseong-001");
+    await expect(page.locator(".recharts-line")).toHaveCount(4);
+    await expect(page.getByText(FAKE_TEXT)).toBeVisible();
+    await page.getByRole("link", { name: /수성구 목록으로/ }).click();
+    await expect(page.getByText(/수성구 사례 \d+건/)).toBeVisible();
+    expect(blocked, blocked.join("\n")).toEqual([]);
+  });
+});

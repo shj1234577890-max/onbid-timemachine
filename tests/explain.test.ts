@@ -32,6 +32,23 @@ test("해설 검사: 금지어가 있으면 실패", () => {
 
 test("해설 검사: 준 적 없는 숫자(계산한 값 포함)가 있으면 실패", () => {
   assert.equal(checkExplanation("수익률은 +51.0%입니다.", "수익률: +51.0%"), null);
-  assert.equal(checkExplanation("약 1.5배가 되었습니다.", "수익률: +51.0%"), "새 숫자: 1.5");
+  assert.equal(checkExplanation("약 1.5배가 되었습니다.", "수익률: +51.0%"), "금지어: 1.5배"); // 말로 바꾼 수량 표현으로 먼저 걸린다
+  assert.equal(checkExplanation("수익률은 +61.0%입니다.", "수익률: +51.0%"), "새 숫자: 61.0");
   assert.equal(checkExplanation("연 5%씩 올랐습니다.", "수익률: +51.0%"), "새 숫자: 5");
+});
+
+test("해설 검사: 권유 표현과 말로 바꾼 수량 표현도 막는다 (SEC-005)", () => {
+  const input = "수익률: +51.0%\n낙찰 시기: 2016년 5월";
+  assert.equal(checkExplanation("지금 매수하세요.", input), "금지어: 매수하세요");
+  assert.equal(checkExplanation("투자하세요.", input), "금지어: 투자하세요");
+  assert.equal(checkExplanation("시세가 두 배가 되었습니다.", input), "금지어: 두 배");
+  assert.equal(checkExplanation("시세가 2배가 되었습니다.", input), "금지어: 2배");
+  assert.equal(checkExplanation("가격이 절반이 되었습니다.", input), "금지어: 절반");
+  assert.equal(checkExplanation("수익률은 +51.0%입니다.", input), null);
+});
+
+test("해설 검사: 600자를 넘으면 막는다 (SEC-005)", () => {
+  const input = "수익률: +51.0%";
+  assert.equal(checkExplanation("가".repeat(600), input), null);
+  assert.match(checkExplanation("가".repeat(601), input) ?? "", /너무 김/);
 });

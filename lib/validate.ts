@@ -5,6 +5,16 @@ import type { CasesFile } from "./types.ts";
 
 const DATE = /^\d{4}-\d{2}-\d{2}$/;
 
+/**
+ * 사례 파일에 있어도 되는 칸. 이 밖의 칸(동·호수, 낙찰자 이름·연락처 같은 개인정보가 들어올 수 있는 칸)은 오류로 막는다. (CHECK.md SEC-008, DESIGN §7)
+ * 새 칸이 정말 필요하면 DESIGN 4장과 이 목록을 함께 고친다.
+ */
+const TOP_KEYS = ["asOfDate", "isSample", "cases"];
+const CASE_KEYS = ["id", "sido", "sigungu", "dong", "complexName", "areaM2", "auctionDate", "appraisalPrice", "winningBid", "yearlyPrices", "recentDeals"];
+const DEAL_KEYS = ["date", "areaM2", "price"];
+
+const unknownKeys = (obj: Record<string, unknown>, allowed: string[]) => Object.keys(obj).filter((k) => !allowed.includes(k));
+
 const isObject = (v: unknown): v is Record<string, unknown> => typeof v === "object" && v !== null && !Array.isArray(v);
 const isWon = (v: unknown) => typeof v === "number" && Number.isSafeInteger(v) && v > 0;
 const isArea = (v: unknown) => typeof v === "number" && Number.isFinite(v) && v > 0;
@@ -14,6 +24,7 @@ const isDate = (v: unknown) => typeof v === "string" && DATE.test(v) && !Number.
 export function validateCasesFile(data: unknown): string[] {
   const problems: string[] = [];
   if (!isObject(data)) return ["파일 전체가 객체가 아닙니다"];
+  for (const k of unknownKeys(data, TOP_KEYS)) problems.push(`허용하지 않는 칸: ${k}`);
   if (!isDate(data.asOfDate)) problems.push("asOfDate가 'YYYY-MM-DD' 날짜가 아닙니다");
   if (typeof data.isSample !== "boolean") problems.push("isSample이 true/false가 아닙니다");
   if (!Array.isArray(data.cases)) return [...problems, "cases가 목록이 아닙니다"];
@@ -22,6 +33,7 @@ export function validateCasesFile(data: unknown): string[] {
   data.cases.forEach((c: unknown, i: number) => {
     const at = (field: string, why: string) => problems.push(`cases[${i}].${field}: ${why}`);
     if (!isObject(c)) return at("(전체)", "객체가 아닙니다");
+    for (const k of unknownKeys(c, CASE_KEYS)) at(k, "허용하지 않는 칸입니다 (동·호수, 낙찰자 정보는 넣지 않습니다)");
     if (typeof c.id !== "string" || c.id === "") at("id", "비어 있습니다");
     else if (ids.has(c.id)) at("id", `중복된 번호입니다 (${c.id})`);
     else ids.add(c.id);
@@ -45,6 +57,7 @@ export function validateCasesFile(data: unknown): string[] {
     if (!Array.isArray(c.recentDeals)) at("recentDeals", "목록이 아닙니다");
     else {
       c.recentDeals.forEach((d: unknown, j: number) => {
+        if (isObject(d)) for (const k of unknownKeys(d, DEAL_KEYS)) at(`recentDeals[${j}].${k}`, "허용하지 않는 칸입니다");
         if (!isObject(d) || !isDate(d.date) || !isArea(d.areaM2) || !isWon(d.price)) at(`recentDeals[${j}]`, "date·areaM2·price가 올바르지 않습니다");
       });
     }

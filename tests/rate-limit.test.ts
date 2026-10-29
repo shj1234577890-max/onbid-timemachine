@@ -24,3 +24,11 @@ test("시간이 지나면 다시 허용한다", () => {
   assert.equal(limiter.allow("a", 59_999), false);
   assert.equal(limiter.allow("a", 60_000), true);
 });
+
+test("오래된 기록은 정리되고, 정리 뒤에도 한도는 그대로 지켜진다 (SEC-004)", () => {
+  const limiter = createRateLimiter(1, 1000);
+  for (let i = 0; i < 100; i++) limiter.allow(`user-${i}`, 0);
+  assert.equal(limiter.allow("user-0", 500), false); // 아직 창 안
+  assert.equal(limiter.allow("user-0", 1000), true); // 창이 지나 다시 허용
+  assert.equal(limiter.allow("user-0", 1100), false);
+});
