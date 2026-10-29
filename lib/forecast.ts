@@ -1,4 +1,4 @@
-// Design Ref: §5.3 예측 — 과거 10개 연도 시세의 흐름으로 앞으로 10년의 시세를 낙관·기준·비관 3가지로 계산한다.
+// Design Ref: §5.3 예측 — 과거 10개 연도 시세의 흐름으로 앞으로 10년의 시세를 낙관·기준·비관 3가지와 물가 기준선으로 계산한다.
 // 연도를 고정하지 않고 받아서 계산한다. 그래야 같은 함수로 예측 검증(2006~2015년 → 2016~2025년)도 할 수 있다.
 import type { DateString, YearlyPrices } from "./types.ts";
 
@@ -6,17 +6,21 @@ import type { DateString, YearlyPrices } from "./types.ts";
 export const BASIS_YEARS = 10;
 /** 예측하는 햇수 */
 export const FORECAST_YEARS = 10;
-/** 비관 시나리오의 연 상승률: 물가상승률 연 2% 가정 (한국은행 물가안정목표) */
+/** 물가 기준선의 연 상승률: 물가상승률 연 2% 가정 (한국은행 물가안정목표). 예측선이 아니라 비교용 점선이다. */
 export const INFLATION_RATE = 0.02;
+/** 낙관·비관이 기준에서 벌어지는 폭: 연 2%p. 세 줄 순서가 항상 낙관 ≥ 기준 ≥ 비관이 된다. */
+export const SCENARIO_SPREAD = 0.02;
 
-/** 세 가지 시나리오의 연 상승률 (0.05 = 연 5%) */
+/** 예측선 세 줄과 물가 기준선의 연 상승률 (0.05 = 연 5%) */
 export type ForecastRates = {
   /** 기준: 근거 연도 9번 변화의 연평균 상승률 */
   base: number;
-  /** 낙관: 근거 연도 9번 변화 중 가장 크게 오른 해의 상승률 */
+  /** 낙관: 기준 + 2%p */
   optimistic: number;
-  /** 비관: 물가상승률만 반영 */
+  /** 비관: 기준 − 2%p */
   pessimistic: number;
+  /** 물가 기준선: 연 2% */
+  inflation: number;
 };
 
 /** 예측한 한 해의 시세 (원 단위로 반올림) */
@@ -25,6 +29,7 @@ export type ForecastPoint = {
   base: number;
   optimistic: number;
   pessimistic: number;
+  inflation: number;
 };
 
 export type Forecast = {
@@ -50,17 +55,13 @@ export function getForecastRates(
   if (values.length < 2) return null;
 
   const changes = values.length - 1; // 10개 연도면 9번
-  const first = values[0];
-  const last = values[values.length - 1];
-  let optimistic = -Infinity;
-  for (let i = 1; i < values.length; i++) {
-    optimistic = Math.max(optimistic, values[i] / values[i - 1] - 1);
-  }
+  const base = Math.pow(values[values.length - 1] / values[0], 1 / changes) - 1;
 
   return {
-    base: Math.pow(last / first, 1 / changes) - 1,
-    optimistic,
-    pessimistic: INFLATION_RATE,
+    base,
+    optimistic: base + SCENARIO_SPREAD,
+    pessimistic: base - SCENARIO_SPREAD,
+    inflation: INFLATION_RATE,
   };
 }
 
@@ -81,23 +82,34 @@ export function projectPrices(
       base: Math.round(startPrice * Math.pow(1 + rates.base, k)),
       optimistic: Math.round(startPrice * Math.pow(1 + rates.optimistic, k)),
       pessimistic: Math.round(startPrice * Math.pow(1 + rates.pessimistic, k)),
+      inflation: Math.round(startPrice * Math.pow(1 + rates.inflation, k)),
     });
   }
   return points;
 }
 
+/** 마지막 예측 연도의 예상 수익률(%) 범위. 반올림하지 않은 값이다. */
+export type TenYearOutlook = {
+  year: number;
+  base: number;
+  optimistic: number;
+  pessimistic: number;
+};
+
 /**
- * "예측상 수익률이 가장 높은 시점": 기준 예측에서 (예측 시세 − 낙찰가) ÷ 낙찰가가 가장 큰 해.
- * 수익률이 같은 해가 여러 개면 이른 해를 고른다. 예측이 비어 있으면 null이다.
- * 화면에는 "최적의 매도 시점"이 아니라 이 이름 그대로 쓴다. (PRD §5 금지어)
+ * "10년 뒤 예상 수익률": 마지막 예측 연도의 (예측 시세 − 낙찰가) ÷ 낙찰가 × 100을 세 시나리오로 구한다.
+ * 한 시점을 찍어 주지 않고 범위로 보여 주기 위해서다. (PRD §5 must ②) 예측이 비어 있으면 null이다.
  */
-export function getBestYear(points: readonly ForecastPoint[], winningBid: number): number | null {
-  let best: { year: number; rate: number } | null = null;
-  for (const point of points) {
-    const rate = (point.base - winningBid) / winningBid;
-    if (best === null || rate > best.rate) best = { year: point.year, rate };
-  }
-  return best?.year ?? null;
+export function getTenYearOutlook(points: readonly ForecastPoint[], winningBid: number): TenYearOutlook | null {
+  const last = points[points.length - 1];
+  if (last === undefined) return null;
+  const rate = (price: number) => ((price - winningBid) / winningBid) * 100;
+  return {
+    year: last.year,
+    base: rate(last.base),
+    optimistic: rate(last.optimistic),
+    pessimistic: rate(last.pessimistic),
+  };
 }
 
 /** 예측 검증 통과 기준: 마지막 해 오차 평균 ±15% 이내 (실제 데이터로 바꾼 뒤 판정) */
